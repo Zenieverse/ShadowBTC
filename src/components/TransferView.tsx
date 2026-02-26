@@ -5,9 +5,10 @@ import { motion } from 'motion/react';
 
 interface TransferViewProps {
   onSuccess: (amount: number) => void;
+  walletAddress: string | null;
 }
 
-export const TransferView = ({ onSuccess }: TransferViewProps) => {
+export const TransferView = ({ onSuccess, walletAddress }: TransferViewProps) => {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -27,7 +28,15 @@ export const TransferView = ({ onSuccess }: TransferViewProps) => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
-          <PrivateTransfer onSuccess={onSuccess} />
+          {!walletAddress ? (
+            <div className="glass p-12 rounded-2xl text-center space-y-4">
+              <Shield size={48} className="mx-auto text-white/10" />
+              <h3 className="text-lg font-bold">Wallet Not Connected</h3>
+              <p className="text-sm text-white/40 max-w-xs mx-auto">Please connect your Starknet wallet to initiate private transfers.</p>
+            </div>
+          ) : (
+            <PrivateTransfer onSuccess={onSuccess} walletAddress={walletAddress} />
+          )}
         </div>
         
         <div className="space-y-6">

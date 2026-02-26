@@ -1,6 +1,8 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import crypto from "crypto";
+
+// Simple ID generator for compatibility
+const generateId = () => Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
 
 // Mock database for simulation
 interface Commitment {
@@ -20,6 +22,12 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+  });
 
   // API Routes
   app.get("/api/health", (req, res) => {
@@ -44,7 +52,7 @@ async function startServer() {
     }
 
     const commitment: Commitment = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       hash,
       amount,
       timestamp: Date.now(),
@@ -53,7 +61,7 @@ async function startServer() {
 
     commitments.push(commitment);
     history.unshift({
-      id: crypto.randomUUID(),
+      id: generateId(),
       type: 'mint',
       amount: amount.toFixed(4),
       timestamp: 'Just now',
@@ -87,7 +95,7 @@ async function startServer() {
     nullifiers.add(nullifier);
 
     history.unshift({
-      id: crypto.randomUUID(),
+      id: generateId(),
       type: 'transfer',
       amount: commitment.amount.toFixed(4),
       timestamp: 'Just now',
@@ -108,7 +116,7 @@ async function startServer() {
 
     commitment.spent = true;
     history.unshift({
-      id: crypto.randomUUID(),
+      id: generateId(),
       type: 'withdraw',
       amount: commitment.amount.toFixed(4),
       timestamp: 'Just now',

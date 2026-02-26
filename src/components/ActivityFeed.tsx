@@ -16,11 +16,26 @@ export const ActivityFeed = () => {
   const fetchHistory = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/history');
-      const data = await res.json();
-      setActivities(data);
-    } catch (error) {
-      console.error("Failed to fetch history", error);
+      const res = await fetch('/api/history', { cache: 'no-store' });
+      const text = await res.text();
+      
+      if (!res.ok) {
+        throw new Error(`Server responded with ${res.status}: ${text.slice(0, 100)}`);
+      }
+      
+      try {
+        const data = JSON.parse(text);
+        if (Array.isArray(data)) {
+          setActivities(data);
+        } else {
+          console.error("History data is not an array:", data);
+        }
+      } catch (parseError) {
+        console.error("Failed to parse history JSON:", text);
+        throw parseError;
+      }
+    } catch (error: any) {
+      console.error("Failed to fetch history:", error.message || error);
     } finally {
       setLoading(false);
     }

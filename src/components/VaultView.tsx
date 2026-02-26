@@ -5,9 +5,10 @@ import { motion } from 'motion/react';
 
 interface VaultViewProps {
   onSuccess: (amount: number) => void;
+  walletAddress: string | null;
 }
 
-export const VaultView = ({ onSuccess }: VaultViewProps) => {
+export const VaultView = ({ onSuccess, walletAddress }: VaultViewProps) => {
   const [withdrawAddress, setWithdrawAddress] = useState('');
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [commitments, setCommitments] = useState<any[]>([]);
@@ -16,14 +17,21 @@ export const VaultView = ({ onSuccess }: VaultViewProps) => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchCommitments();
-  }, []);
+    if (walletAddress) {
+      fetchCommitments();
+    }
+  }, [walletAddress]);
 
   const fetchCommitments = async () => {
     try {
-      const res = await fetch('/api/commitments');
-      const data = await res.json();
-      setCommitments(data.filter((c: any) => !c.spent));
+      const res = await fetch('/api/commitments', { cache: 'no-store' });
+      const text = await res.text();
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
+      
+      const data = JSON.parse(text);
+      if (Array.isArray(data)) {
+        setCommitments(data.filter((c: any) => !c.spent));
+      }
     } catch (err) {
       console.error("Failed to fetch commitments", err);
     }
@@ -46,7 +54,13 @@ export const VaultView = ({ onSuccess }: VaultViewProps) => {
         }),
       });
 
-      const result = await res.json();
+      const text = await res.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        throw new Error("Invalid server response");
+      }
 
       if (res.ok) {
         setStatus('success');
@@ -94,88 +108,98 @@ export const VaultView = ({ onSuccess }: VaultViewProps) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <MintForm onSuccess={onSuccess} />
-        
-        <div className="glass p-6 rounded-2xl flex flex-col">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ArrowUpCircle size={20} className="text-white/40" />
-            Withdraw BTC
-          </h3>
-          
-          <form onSubmit={handleWithdraw} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs text-white/40 uppercase font-bold">Select Commitment to Burn</label>
-              <select 
-                value={selectedCommitmentId}
-                onChange={(e) => setSelectedCommitmentId(e.target.value)}
-                disabled={isWithdrawing || commitments.length === 0}
-                className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm appearance-none"
-              >
-                <option value="">Select a commitment...</option>
-                {commitments.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.amount.toFixed(4)} zBTC (ID: {c.id.slice(0, 8)}...)
-                  </option>
-                ))}
-              </select>
-            </div>
+        {!walletAddress ? (
+          <div className="md:col-span-2 glass p-12 rounded-2xl text-center space-y-4">
+            <Shield size={48} className="mx-auto text-white/10" />
+            <h3 className="text-lg font-bold">Wallet Not Connected</h3>
+            <p className="text-sm text-white/40 max-w-xs mx-auto">Please connect your Starknet wallet to access the shielded vault and mint zBTC.</p>
+          </div>
+        ) : (
+          <>
+            <MintForm onSuccess={onSuccess} />
+            
+            <div className="glass p-6 rounded-2xl flex flex-col">
+              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <ArrowUpCircle size={20} className="text-white/40" />
+                Withdraw BTC
+              </h3>
+              
+              <form onSubmit={handleWithdraw} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs text-white/40 uppercase font-bold">Select Commitment to Burn</label>
+                  <select 
+                    value={selectedCommitmentId}
+                    onChange={(e) => setSelectedCommitmentId(e.target.value)}
+                    disabled={isWithdrawing || commitments.length === 0}
+                    className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm appearance-none"
+                  >
+                    <option value="">Select a commitment...</option>
+                    {commitments.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.amount.toFixed(4)} zBTC (ID: {c.id.slice(0, 8)}...)
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="space-y-2">
-              <label className="text-xs text-white/40 uppercase font-bold">Destination BTC Address</label>
-              <input 
-                type="text" 
-                value={withdrawAddress}
-                onChange={(e) => setWithdrawAddress(e.target.value)}
-                placeholder="bc1q..."
-                disabled={isWithdrawing}
-                className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm"
-              />
-            </div>
+                <div className="space-y-2">
+                  <label className="text-xs text-white/40 uppercase font-bold">Destination BTC Address</label>
+                  <input 
+                    type="text" 
+                    value={withdrawAddress}
+                    onChange={(e) => setWithdrawAddress(e.target.value)}
+                    placeholder="bc1q..."
+                    disabled={isWithdrawing}
+                    className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm"
+                  />
+                </div>
 
-            <button 
-              type="submit" 
-              disabled={isWithdrawing || !withdrawAddress || !selectedCommitmentId}
-              className="w-full btn-secondary flex items-center justify-center gap-2 py-4 border border-white/10 hover:border-white/20"
-            >
-              {isWithdrawing ? (
-                <>
-                  <Loader2 size={18} className="animate-spin" />
-                  Processing Withdrawal...
-                </>
-              ) : (
-                <>
-                  Withdraw to L1 <Bitcoin size={18} />
-                </>
+                <button 
+                  type="submit" 
+                  disabled={isWithdrawing || !withdrawAddress || !selectedCommitmentId}
+                  className="w-full btn-secondary flex items-center justify-center gap-2 py-4 border border-white/10 hover:border-white/20"
+                >
+                  {isWithdrawing ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Processing Withdrawal...
+                    </>
+                  ) : (
+                    <>
+                      Withdraw to L1 <Bitcoin size={18} />
+                    </>
+                  )}
+                </button>
+
+                {commitments.length === 0 && !isWithdrawing && (
+                  <p className="text-[10px] text-rose-400 text-center">No available shielded commitments to withdraw.</p>
+                )}
+              </form>
+
+              {status === 'success' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400 text-sm"
+                >
+                  <CheckCircle2 size={18} />
+                  <span>Withdrawal request submitted to L1.</span>
+                </motion.div>
               )}
-            </button>
 
-            {commitments.length === 0 && !isWithdrawing && (
-              <p className="text-[10px] text-rose-400 text-center">No available shielded commitments to withdraw.</p>
-            )}
-          </form>
-
-          {status === 'success' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400 text-sm"
-            >
-              <CheckCircle2 size={18} />
-              <span>Withdrawal request submitted to L1.</span>
-            </motion.div>
-          )}
-
-          {status === 'error' && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-rose-400 text-sm"
-            >
-              <AlertCircle size={18} />
-              <span>{error}</span>
-            </motion.div>
-          )}
-        </div>
+              {status === 'error' && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-rose-400 text-sm"
+                >
+                  <AlertCircle size={18} />
+                  <span>{error}</span>
+                </motion.div>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="glass p-8 rounded-2xl">

@@ -3,7 +3,11 @@ import { connect, disconnect } from 'get-starknet';
 import { Wallet, LogOut, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export const WalletButton = () => {
+interface WalletButtonProps {
+  onAddressChange?: (address: string | null) => void;
+}
+
+export const WalletButton = ({ onAddressChange }: WalletButtonProps) => {
   const [address, setAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -13,7 +17,9 @@ export const WalletButton = () => {
         // Try to connect silently if already authorized
         const starknet = await connect({ modalMode: 'neverAsk' }) as any;
         if (starknet && starknet.isConnected) {
-          setAddress(starknet.selectedAddress || null);
+          const addr = starknet.selectedAddress || null;
+          setAddress(addr);
+          onAddressChange?.(addr);
         }
       } catch (error) {
         // Silent fail is fine here
@@ -31,7 +37,9 @@ export const WalletButton = () => {
       }) as any;
       
       if (starknet && starknet.isConnected) {
-        setAddress(starknet.selectedAddress || null);
+        const addr = starknet.selectedAddress || null;
+        setAddress(addr);
+        onAddressChange?.(addr);
       }
     } catch (error) {
       console.error("Connection failed", error);
@@ -45,6 +53,7 @@ export const WalletButton = () => {
     try {
       await disconnect();
       setAddress(null);
+      onAddressChange?.(null);
     } catch (error) {
       console.error("Disconnect failed", error);
     }

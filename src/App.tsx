@@ -17,6 +17,7 @@ export default function App() {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -38,9 +39,9 @@ export default function App() {
       case 'dashboard':
         return <DashboardView balance={balance} />;
       case 'transfer':
-        return <TransferView onSuccess={handleTransferSuccess} />;
+        return <TransferView onSuccess={handleTransferSuccess} walletAddress={walletAddress} />;
       case 'vault':
-        return <VaultView onSuccess={handleBalanceUpdate} />;
+        return <VaultView onSuccess={handleBalanceUpdate} walletAddress={walletAddress} />;
       case 'analytics':
         return <AnalyticsView />;
       case 'settings':
@@ -93,7 +94,7 @@ export default function App() {
               </button>
             </div>
             <div className="h-8 w-[1px] bg-brand-border" />
-            <WalletButton />
+            <WalletButton onAddressChange={setWalletAddress} />
           </div>
         </header>
 

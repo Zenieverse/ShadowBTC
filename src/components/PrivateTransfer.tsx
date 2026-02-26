@@ -6,9 +6,10 @@ import CryptoJS from 'crypto-js';
 
 interface PrivateTransferProps {
   onSuccess: (amount: number) => void;
+  walletAddress: string | null;
 }
 
-export const PrivateTransfer = ({ onSuccess }: PrivateTransferProps) => {
+export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferProps) => {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -17,8 +18,10 @@ export const PrivateTransfer = ({ onSuccess }: PrivateTransferProps) => {
   const [commitments, setCommitments] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchCommitments();
-  }, []);
+    if (walletAddress) {
+      fetchCommitments();
+    }
+  }, [walletAddress]);
 
   const fetchCommitments = async () => {
     const res = await fetch('/api/commitments');
