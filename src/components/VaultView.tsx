@@ -15,12 +15,26 @@ export const VaultView = ({ onSuccess, walletAddress }: VaultViewProps) => {
   const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
+  const [tvl, setTvl] = useState(1240.52);
 
   useEffect(() => {
     if (walletAddress) {
       fetchCommitments();
+      fetchStats();
     }
   }, [walletAddress]);
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setTvl(1240.52 + data.tvl);
+      }
+    } catch (err) {
+      console.error("Failed to fetch stats", err);
+    }
+  };
 
   const fetchCommitments = async () => {
     try {
@@ -102,7 +116,7 @@ export const VaultView = ({ onSuccess, walletAddress }: VaultViewProps) => {
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-[10px] text-white/40 uppercase font-bold">Vault TVL</p>
-            <p className="text-lg font-mono font-bold text-brand-primary">1,240.52 BTC</p>
+            <p className="text-lg font-mono font-bold text-brand-primary">{tvl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} BTC</p>
           </div>
         </div>
       </div>

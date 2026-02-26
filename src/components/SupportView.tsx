@@ -18,6 +18,14 @@ export const SupportView = () => {
     }
   ];
 
+  const [formStatus, setFormStatus] = React.useState<'idle' | 'sending' | 'success'>('idle');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormStatus('sending');
+    setTimeout(() => setFormStatus('success'), 1500);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -31,6 +39,63 @@ export const SupportView = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
+          {/* Contact Form */}
+          <div className="glass p-8 rounded-2xl space-y-6">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">
+              <Mail size={16} />
+              Contact Core Team
+            </h3>
+            
+            {formStatus === 'success' ? (
+              <div className="py-12 text-center space-y-4">
+                <div className="w-12 h-12 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                  <ShieldQuestion size={24} />
+                </div>
+                <h4 className="text-lg font-bold">Message Received</h4>
+                <p className="text-sm text-white/40">Our team will respond to your inquiry via the encrypted channel shortly.</p>
+                <button 
+                  onClick={() => setFormStatus('idle')}
+                  className="text-xs font-bold uppercase tracking-widest text-brand-primary hover:underline"
+                >
+                  Send another message
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-white/40">Name</label>
+                    <input type="text" required className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-brand-primary/50" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] uppercase font-bold text-white/40">Email</label>
+                    <input type="email" required className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-brand-primary/50" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-white/40">Subject</label>
+                  <select className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-brand-primary/50">
+                    <option>Technical Issue</option>
+                    <option>Institutional Inquiry</option>
+                    <option>Bug Report</option>
+                    <option>Other</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] uppercase font-bold text-white/40">Message</label>
+                  <textarea required rows={4} className="w-full bg-white/5 border border-white/10 rounded-xl py-2 px-4 text-sm focus:outline-none focus:border-brand-primary/50 resize-none"></textarea>
+                </div>
+                <button 
+                  type="submit" 
+                  disabled={formStatus === 'sending'}
+                  className="w-full btn-primary py-3 text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                >
+                  {formStatus === 'sending' ? "Sending encrypted message..." : "Send Message"}
+                </button>
+              </form>
+            )}
+          </div>
+
           {/* FAQ Section */}
           <div className="space-y-4">
             <h3 className="text-sm font-bold uppercase tracking-widest text-white/40 flex items-center gap-2">

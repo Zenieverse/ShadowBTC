@@ -38,7 +38,28 @@ const PRIVACY_DATA = [
   { name: 'Week 6', score: 99 },
 ];
 
+const generateDynamicYield = () => YIELD_DATA.map(d => ({
+  ...d,
+  yield: d.yield + (Math.random() * 0.4 - 0.2),
+  benchmark: d.benchmark + (Math.random() * 0.1 - 0.05)
+}));
+
+const generateDynamicPrivacy = () => PRIVACY_DATA.map(d => ({
+  ...d,
+  score: Math.min(100, d.score + (Math.random() * 2 - 1))
+}));
+
 export const AnalyticsView = () => {
+  const [dynamicYield, setDynamicYield] = React.useState(generateDynamicYield());
+  const [dynamicPrivacy, setDynamicPrivacy] = React.useState(generateDynamicPrivacy());
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setDynamicYield(generateDynamicYield());
+      setDynamicPrivacy(generateDynamicPrivacy());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
   const handleExport = () => {
     const stats = {
       totalVolume: "1.24 BTC",
@@ -124,7 +145,7 @@ export const AnalyticsView = () => {
           
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={YIELD_DATA}>
+              <AreaChart data={dynamicYield}>
                 <defs>
                   <linearGradient id="colorYield" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#F7931A" stopOpacity={0.3}/>
@@ -172,7 +193,7 @@ export const AnalyticsView = () => {
           <h3 className="text-lg font-semibold mb-8">Privacy Score Evolution</h3>
           <div className="flex-1 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={PRIVACY_DATA}>
+              <BarChart data={dynamicPrivacy}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff05" vertical={false} />
                 <XAxis 
                   dataKey="name" 
@@ -187,10 +208,10 @@ export const AnalyticsView = () => {
                   contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #333', borderRadius: '12px', fontSize: '12px' }}
                 />
                 <Bar dataKey="score" radius={[4, 4, 0, 0]}>
-                  {PRIVACY_DATA.map((entry, index) => (
+                  {dynamicPrivacy.map((entry, index) => (
                     <Cell 
                       key={`cell-${index}`} 
-                      fill={index === PRIVACY_DATA.length - 1 ? '#F7931A' : '#ffffff10'} 
+                      fill={index === dynamicPrivacy.length - 1 ? '#F7931A' : '#ffffff10'} 
                     />
                   ))}
                 </Bar>

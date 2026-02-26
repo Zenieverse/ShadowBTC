@@ -160,6 +160,62 @@ async function startServer() {
     }
   });
 
+  // Get Protocol Stats
+  app.get("/api/stats", (req, res) => {
+    try {
+      const totalCommitments = db.prepare("SELECT COUNT(*) as count FROM commitments").get() as any;
+      const spentCommitments = db.prepare("SELECT COUNT(*) as count FROM commitments WHERE spent = 1").get() as any;
+      const totalTVL = db.prepare("SELECT SUM(amount) as sum FROM commitments WHERE spent = 0").get() as any;
+      const totalHistory = db.prepare("SELECT COUNT(*) as count FROM history").get() as any;
+
+      res.json({
+        tvl: totalTVL.sum || 0,
+        proofs: (totalCommitments.count + spentCommitments.count) * 1.5, // Simulated proof count
+        historyCount: totalHistory.count,
+        privacyScore: 95 + Math.min(5, totalCommitments.count / 10) // Simulated privacy score
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Search Endpoint
+  app.get("/api/search", (req, res) => {
+    const { q } = req.query;
+    if (!q) return res.json({ results: [] });
+
+    try {
+      const historyResults = db.prepare("SELECT * FROM history WHERE id LIKE ? OR type LIKE ? OR amount LIKE ?").all(`%${q}%`, `%${q}%`, `%${q}%`);
+      const commitmentResults = db.prepare("SELECT * FROM commitments WHERE id LIKE ? OR hash LIKE ?").all(`%${q}%`, `%${q}%`);
+      
+      res.json({
+        history: historyResults,
+        commitments: commitmentResults
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Testnet Faucet
+  app.post("/api/faucet", (req, res) => {
+    const amount = 0.1;
+    const id = generateId();
+    const timestamp = Date.now();
+
+    try {
+      const insertCommitment = db.prepare("INSERT INTO commitments (id, hash, amount, timestamp) VALUES (?, ?, ?, ?)");
+      insertCommitment.run(id, `faucet_${generateId()}`, amount, timestamp);
+
+      const insertHistory = db.prepare("INSERT INTO history (id, type, amount, timestamp, status) VALUES (?, ?, ?, ?, ?)");
+      insertHistory.run(generateId(), 'faucet', amount.toFixed(4), 'Just now', 'confirmed');
+
+      res.json({ success: true, amount });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

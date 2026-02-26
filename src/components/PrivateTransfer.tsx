@@ -12,6 +12,7 @@ interface PrivateTransferProps {
 export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferProps) => {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [status, setStatus] = useState<'idle' | 'proving' | 'submitting' | 'success' | 'error'>('idle');
   const [error, setError] = useState('');
@@ -31,12 +32,15 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
 
   const handleTransfer = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !recipient || commitments.length === 0) return;
+    if (!amount || !recipient || !selectedCommitmentId) return;
 
     setIsProcessing(true);
     setStatus('proving');
 
     try {
+      const selectedCommitment = commitments.find(c => c.id === selectedCommitmentId);
+      if (!selectedCommitment) throw new Error("Selected commitment not found");
+
       // 1. Generate Proof (Simulated via Gemini)
       const secret = "user_secret_" + Math.random().toString(36);
       const proof = await generateZKProof(secret, Number(amount));
@@ -44,7 +48,7 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
       setStatus('submitting');
       
       // 2. Generate Nullifier
-      const nullifier = CryptoJS.SHA256(secret + commitments[0].id).toString();
+      const nullifier = CryptoJS.SHA256(secret + selectedCommitment.id).toString();
 
       // 3. Submit to Shielded Vault
       const res = await fetch('/api/spend', {
@@ -53,7 +57,7 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
         body: JSON.stringify({
           nullifier,
           proof,
-          commitmentId: commitments[0].id,
+          commitmentId: selectedCommitment.id,
         }),
       });
 
@@ -67,6 +71,7 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
           setStatus('idle');
           setAmount('');
           setRecipient('');
+          setSelectedCommitmentId('');
           setIsProcessing(false);
         }, 3000);
       } else {
@@ -88,6 +93,27 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
 
       <form onSubmit={handleTransfer} className="space-y-4">
         <div className="space-y-2">
+          <label className="text-xs text-white/40 uppercase font-bold">Select Commitment to Spend</label>
+          <select 
+            value={selectedCommitmentId}
+            onChange={(e) => {
+              setSelectedCommitmentId(e.target.value);
+              const c = commitments.find(comm => comm.id === e.target.value);
+              if (c) setAmount(c.amount.toString());
+            }}
+            disabled={isProcessing || commitments.length === 0}
+            className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm appearance-none"
+          >
+            <option value="">Select a commitment...</option>
+            {commitments.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.amount.toFixed(4)} zBTC (ID: {c.id.slice(0, 8)}...)
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-2">
           <label className="text-xs text-white/40 uppercase font-bold">Recipient Address (Shielded)</label>
           <input 
             type="text" 
@@ -105,18 +131,18 @@ export const PrivateTransfer = ({ onSuccess, walletAddress }: PrivateTransferPro
             <input 
               type="text" 
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              readOnly
               placeholder="0.00"
-              disabled={isProcessing}
-              className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono"
+              className="w-full bg-brand-dark/30 border border-brand-border rounded-xl py-3 px-4 focus:outline-none text-white/40 font-mono cursor-not-allowed"
             />
-            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 font-mono text-sm">zBTC</span>
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 font-mono text-sm">zBTC</span>
           </div>
+          <p className="text-[10px] text-white/20 italic">ShadowBTC currently supports full-commitment transfers for maximum anonymity.</p>
         </div>
 
         <button 
           type="submit" 
-          disabled={isProcessing || !amount || !recipient || commitments.length === 0}
+          disabled={isProcessing || !amount || !recipient || !selectedCommitmentId}
           className="w-full btn-secondary flex items-center justify-center gap-2 py-4 border border-brand-primary/20 hover:border-brand-primary/50"
         >
           {isProcessing ? (

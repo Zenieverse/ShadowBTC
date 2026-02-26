@@ -6,16 +6,58 @@ import { motion } from 'motion/react';
 
 interface DashboardViewProps {
   balance: number;
+  onViewAll?: () => void;
 }
 
-export const DashboardView = ({ balance }: DashboardViewProps) => {
+export const DashboardView = ({ balance, onViewAll }: DashboardViewProps) => {
   const [rewards, setRewards] = useState(0.00124);
   const [isClaiming, setIsClaiming] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [stats, setStats] = useState({
+    tvl: 1240.52,
+    privacyScore: 98,
+    proofs: 12402
+  });
+
+  const fetchStats = async () => {
+    try {
+      const res = await fetch('/api/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setStats({
+          tvl: 1240.52 + data.tvl, // Base + dynamic
+          privacyScore: data.privacyScore,
+          proofs: 12402 + data.proofs
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch stats", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchStats();
+    const interval = setInterval(fetchStats, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
+    fetchStats();
     setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  const handleFaucet = async () => {
+    try {
+      const res = await fetch('/api/faucet', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Successfully requested ${data.amount} testnet zBTC. Your balance will update shortly.`);
+        fetchStats();
+      }
+    } catch (err) {
+      console.error("Faucet request failed", err);
+    }
   };
 
   const handleClaim = () => {
@@ -55,17 +97,17 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/60">Shielded Pool</span>
-                  <span className="text-sm font-mono">85%</span>
+                  <span className="text-sm font-mono">{balance > 0 ? '92%' : '0%'}</span>
                 </div>
                 <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-brand-primary h-full w-[85%]" />
+                  <div className="bg-brand-primary h-full transition-all duration-1000" style={{ width: balance > 0 ? '92%' : '0%' }} />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-white/60">Yield Strategy A</span>
-                  <span className="text-sm font-mono">15%</span>
+                  <span className="text-sm font-mono">{balance > 0 ? '8%' : '0%'}</span>
                 </div>
                 <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-white/20 h-full w-[15%]" />
+                  <div className="bg-white/20 h-full transition-all duration-1000" style={{ width: balance > 0 ? '8%' : '0%' }} />
                 </div>
               </div>
             </div>
@@ -96,11 +138,11 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { label: 'Network TVL', value: '1,240.5 BTC', info: 'Total value locked across all shielded pools on Starknet.' },
-              { label: 'Privacy Score', value: '98/100', info: 'Calculated based on anonymity set size and transaction mixing frequency.' },
-              { label: 'STARK Proofs', value: '12,402', info: 'Total zero-knowledge proofs verified by the Cairo smart contracts.' },
+              { label: 'Network TVL', value: `${stats.tvl.toLocaleString()} BTC`, info: 'Total value locked across all shielded pools on Starknet.' },
+              { label: 'Privacy Score', value: `${stats.privacyScore.toFixed(0)}/100`, info: 'Calculated based on anonymity set size and transaction mixing frequency.' },
+              { label: 'STARK Proofs', value: stats.proofs.toLocaleString(), info: 'Total zero-knowledge proofs verified by the Cairo smart contracts.' },
             ].map((stat) => (
               <div 
                 key={stat.label} 
@@ -111,11 +153,20 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
                 <div className="text-lg font-mono font-bold text-brand-primary">{stat.value}</div>
               </div>
             ))}
+            <button 
+              onClick={handleFaucet}
+              className="glass p-4 rounded-xl border-brand-primary/20 hover:bg-brand-primary/5 transition-all group flex flex-col justify-center"
+            >
+              <div className="text-[10px] text-brand-primary uppercase font-bold mb-1">Testnet Faucet</div>
+              <div className="text-sm font-bold flex items-center gap-2">
+                Request 0.1 zBTC <RefreshCw size={12} className="group-hover:rotate-180 transition-transform" />
+              </div>
+            </button>
           </div>
         </div>
 
         <div className="space-y-8">
-          <ActivityFeed />
+          <ActivityFeed onViewAll={onViewAll} />
           <div className="glass p-6 rounded-2xl border-brand-primary/10">
             <h4 className="text-sm font-bold uppercase tracking-widest text-white/40 mb-4 flex items-center gap-2">
               <ShieldCheck size={16} />

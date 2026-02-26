@@ -5,6 +5,7 @@ import { DashboardView } from './components/DashboardView';
 import { TransferView } from './components/TransferView';
 import { VaultView } from './components/VaultView';
 import { AnalyticsView } from './components/AnalyticsView';
+import { HistoryView } from './components/HistoryView';
 import { SettingsView } from './components/SettingsView';
 import { SupportView } from './components/SupportView';
 import { Bell, Search, Info, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -12,12 +13,62 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 
 export default function App() {
-  const [balance, setBalance] = useState(0.0425);
+  const [balance, setBalance] = useState(0.0000);
   const [showWelcome, setShowWelcome] = useState(true);
   const [currentView, setCurrentView] = useState<ViewType>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<{ history: any[]; commitments: any[] } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([
+    { id: 1, title: 'Protocol Update', message: 'ShadowBTC v1.0.0 is now live on Starknet Sepolia.', time: '2h ago', read: false },
+    { id: 2, title: 'Shielded Deposit', message: 'Your deposit of 0.0425 BTC has been confirmed.', time: '5h ago', read: true },
+  ]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+
+  const fetchBalance = async () => {
+    try {
+      const res = await fetch('/api/commitments');
+      if (res.ok) {
+        const commitments = await res.json();
+        const total = commitments.reduce((acc: number, c: any) => acc + c.amount, 0);
+        setBalance(total);
+      }
+    } catch (err) {
+      console.error("Failed to fetch balance", err);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSearch = async (query: string) => {
+    setSearchQuery(query);
+    if (query.length < 3) {
+      setSearchResults(null);
+      return;
+    }
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data);
+      }
+    } catch (err) {
+      console.error("Search failed", err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -25,23 +76,25 @@ export default function App() {
   };
 
   const handleBalanceUpdate = (amount: number) => {
-    setBalance(prev => prev + amount);
+    fetchBalance();
     showToast(`Balance updated: ${amount > 0 ? '+' : ''}${amount.toFixed(4)} zBTC`);
   };
 
   const handleTransferSuccess = (amount: number) => {
-    setBalance(prev => prev - amount);
+    fetchBalance();
     showToast(`Private transfer of ${amount.toFixed(4)} zBTC successful`);
   };
 
   const renderView = () => {
     switch (currentView) {
       case 'dashboard':
-        return <DashboardView balance={balance} />;
+        return <DashboardView balance={balance} onViewAll={() => setCurrentView('history')} />;
       case 'transfer':
         return <TransferView onSuccess={handleTransferSuccess} walletAddress={walletAddress} />;
       case 'vault':
         return <VaultView onSuccess={handleBalanceUpdate} walletAddress={walletAddress} />;
+      case 'history':
+        return <HistoryView />;
       case 'analytics':
         return <AnalyticsView />;
       case 'settings':
@@ -66,26 +119,85 @@ export default function App() {
               <input 
                 type="text" 
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search transactions, nullifiers, or roots..."
                 className="w-full bg-brand-border/50 border border-brand-border rounded-xl py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-brand-primary/50 transition-colors"
               />
               {searchQuery && (
-                <div className="absolute top-full left-0 w-full mt-2 glass p-4 rounded-xl text-xs text-white/40 z-50">
-                  No results found for "{searchQuery}" in local shielded state.
+                <div className="absolute top-full left-0 w-full mt-2 glass p-4 rounded-xl text-xs z-50 shadow-2xl border border-white/10 max-h-[400px] overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-4 text-center text-white/40">Searching protocol state...</div>
+                  ) : searchResults && (searchResults.history.length > 0 || searchResults.commitments.length > 0) ? (
+                    <div className="space-y-4">
+                      {searchResults.history.length > 0 && (
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-white/20 mb-2">History</p>
+                          {searchResults.history.map((h: any) => (
+                            <div key={h.id} className="p-2 hover:bg-white/5 rounded-lg flex items-center justify-between">
+                              <span className="capitalize">{h.type}</span>
+                              <span className="font-mono text-brand-primary">{h.amount} zBTC</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {searchResults.commitments.length > 0 && (
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-white/20 mb-2">Commitments</p>
+                          {searchResults.commitments.map((c: any) => (
+                            <div key={c.id} className="p-2 hover:bg-white/5 rounded-lg flex flex-col">
+                              <span className="text-[10px] font-mono text-white/40">{c.id}</span>
+                              <span className="font-mono text-brand-primary">{c.amount} zBTC</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-white/40">No results found for "{searchQuery}"</div>
+                  )}
                 </div>
               )}
             </div>
           </div>
 
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 relative">
               <button 
-                onClick={() => showToast("No new notifications")}
-                className="p-2 rounded-full hover:bg-white/5 text-white/40 transition-colors"
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="p-2 rounded-full hover:bg-white/5 text-white/40 transition-colors relative"
               >
                 <Bell size={20} />
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-brand-primary rounded-full border-2 border-brand-dark" />
+                )}
               </button>
+              
+              <AnimatePresence>
+                {showNotifications && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-full right-0 mt-2 w-80 glass rounded-2xl shadow-2xl border border-white/10 z-50 overflow-hidden"
+                  >
+                    <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                      <h4 className="text-sm font-bold">Notifications</h4>
+                      <button onClick={markAllRead} className="text-[10px] text-brand-primary uppercase font-bold hover:underline">Mark all as read</button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.map(n => (
+                        <div key={n.id} className={cn("p-4 border-b border-white/5 hover:bg-white/5 transition-colors", !n.read && "bg-brand-primary/5")}>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-xs font-bold">{n.title}</p>
+                            <span className="text-[10px] text-white/20">{n.time}</span>
+                          </div>
+                          <p className="text-[10px] text-white/40 leading-relaxed">{n.message}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
               <button 
                 onClick={() => showToast("ShadowBTC v1.0.0-beta", "success")}
                 className="p-2 rounded-full hover:bg-white/5 text-white/40 transition-colors"

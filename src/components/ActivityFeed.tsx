@@ -9,7 +9,11 @@ interface ActivityItem {
   status: 'confirmed' | 'pending';
 }
 
-export const ActivityFeed = () => {
+interface ActivityFeedProps {
+  onViewAll?: () => void;
+}
+
+export const ActivityFeed = ({ onViewAll }: ActivityFeedProps) => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -100,7 +104,10 @@ export const ActivityFeed = () => {
         )}
       </div>
       
-      <button className="w-full mt-6 text-xs text-white/20 hover:text-white/40 transition-colors uppercase tracking-widest font-bold">
+      <button 
+        onClick={onViewAll}
+        className="w-full mt-6 text-xs text-white/20 hover:text-white/40 transition-colors uppercase tracking-widest font-bold"
+      >
         View Full History
       </button>
     </div>
