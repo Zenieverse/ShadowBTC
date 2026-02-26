@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-brand-primary: #f7931a; /* Bitcoin Orange */
+  --color-brand-dark: #0a0a0a;
+  --color-brand-card: #141414;
+  --color-brand-border: #262626;
+}
+
+@layer base {
+  body {
+    @apply bg-brand-dark text-white font-sans antialiased;
+  }
+}
+
+.glass {
+  @apply bg-brand-card/80 backdrop-blur-md border border-brand-border;
+}
+
+.btn-primary {
+  @apply bg-brand-primary hover:bg-brand-primary/90 text-black font-bold py-2 px-4 rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-brand-border hover:bg-brand-border/80 text-white font-medium py-2 px-4 rounded-lg transition-all active:scale-95;
+}

@@ -1,0 +1,5 @@
+{
+  "name": "ShadowBTC",
+  "description": "Privacy-preserving Bitcoin DeFi protocol on Starknet with shielded transactions and ZK proofs.",
+  "requestFramePermissions": []
+}
