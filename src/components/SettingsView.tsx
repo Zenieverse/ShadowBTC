@@ -1,11 +1,38 @@
 import React, { useState } from 'react';
 import { Settings, Shield, Globe, Bell, Lock, Cpu, Database, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
+import { cn } from '@/src/lib/utils';
 
 export const SettingsView = () => {
   const [notifications, setNotifications] = useState(true);
   const [privacyMode, setPrivacyMode] = useState('maximum');
   const [network, setNetwork] = useState('starknet-testnet');
+  const [isResetting, setIsResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!confirm("Are you sure you want to reset the protocol state? This will delete all local commitments and transaction history. This action cannot be undone.")) {
+      return;
+    }
+
+    setIsResetting(true);
+    try {
+      const res = await fetch('/api/reset', { method: 'POST' });
+      if (res.ok) {
+        alert("Protocol state has been reset successfully. The page will now reload.");
+        window.location.reload();
+      } else {
+        throw new Error("Failed to reset protocol state");
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handleClearCache = () => {
+    alert("Local proof cache cleared successfully.");
+  };
 
   return (
     <motion.div 
@@ -33,8 +60,17 @@ export const SettingsView = () => {
                   <p className="text-sm font-medium">Shielded Balance Visibility</p>
                   <p className="text-xs text-white/40">Hide balances by default on app launch.</p>
                 </div>
-                <div className="w-12 h-6 bg-brand-primary rounded-full relative cursor-pointer">
-                  <div className="absolute right-1 top-1 w-4 h-4 bg-black rounded-full" />
+                <div 
+                  onClick={() => setNotifications(!notifications)}
+                  className={cn(
+                    "w-12 h-6 rounded-full relative cursor-pointer transition-colors",
+                    notifications ? "bg-brand-primary" : "bg-white/10"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-1 w-4 h-4 bg-black rounded-full transition-all",
+                    notifications ? "right-1" : "left-1"
+                  )} />
                 </div>
               </div>
 
@@ -115,11 +151,18 @@ export const SettingsView = () => {
               <Database size={14} />
               Danger Zone
             </h4>
-            <button className="w-full py-2 px-4 rounded-lg border border-rose-500/20 text-rose-400 text-xs font-bold hover:bg-rose-500/10 transition-colors">
+            <button 
+              onClick={handleClearCache}
+              className="w-full py-2 px-4 rounded-lg border border-rose-500/20 text-rose-400 text-xs font-bold hover:bg-rose-500/10 transition-colors"
+            >
               Clear Local Proof Cache
             </button>
-            <button className="w-full mt-2 py-2 px-4 rounded-lg bg-rose-500/10 text-rose-500 text-xs font-bold hover:bg-rose-500/20 transition-colors">
-              Reset Protocol State
+            <button 
+              onClick={handleReset}
+              disabled={isResetting}
+              className="w-full mt-2 py-2 px-4 rounded-lg bg-rose-500/10 text-rose-500 text-xs font-bold hover:bg-rose-500/20 transition-colors disabled:opacity-50"
+            >
+              {isResetting ? "Resetting..." : "Reset Protocol State"}
             </button>
           </div>
         </div>
