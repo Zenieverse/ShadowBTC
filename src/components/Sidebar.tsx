@@ -8,7 +8,8 @@ import {
   Zap,
   Lock,
   BarChart3,
-  Database
+  Database,
+  History as HistoryIcon
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
@@ -23,7 +24,7 @@ const NAV_ITEMS = [
   { id: 'dashboard' as ViewType, icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'transfer' as ViewType, icon: ArrowLeftRight, label: 'Transfer' },
   { id: 'vault' as ViewType, icon: Database, label: 'Vault' },
-  { id: 'history' as ViewType, icon: History, label: 'History' },
+  { id: 'history' as ViewType, icon: HistoryIcon, label: 'History' },
   { id: 'analytics' as ViewType, icon: BarChart3, label: 'Analytics' },
 ];
 

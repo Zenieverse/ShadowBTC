@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, Search, Filter, Download, ExternalLink, ArrowUpRight, ArrowDownLeft, Shield } from 'lucide-react';
+import { History as HistoryIcon, Search, Filter, Download, ExternalLink, ArrowUpRight, ArrowDownLeft, Shield } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 

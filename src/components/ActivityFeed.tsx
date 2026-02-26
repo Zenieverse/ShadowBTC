@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, ArrowUpRight, ArrowDownLeft, Shield, RefreshCw } from 'lucide-react';
+import { History as HistoryIcon, ArrowUpRight, ArrowDownLeft, Shield, RefreshCw } from 'lucide-react';
 
 interface ActivityItem {
   id: string;
@@ -56,7 +56,7 @@ export const ActivityFeed = ({ onViewAll }: ActivityFeedProps) => {
     <div className="glass p-6 rounded-2xl">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold flex items-center gap-2">
-          <History size={20} className="text-white/40" />
+          <HistoryIcon size={20} className="text-white/40" />
           Shielded Activity
         </h3>
         <button 

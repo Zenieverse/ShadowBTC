@@ -1,8 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
 export const generateZKProof = async (secret: string, amount: number) => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   // In a real app, this would use a WASM-based prover (like snarkjs or a Cairo prover)
   // Here we simulate the process and use Gemini to "validate" the logic or explain it
   const prompt = `Generate a simulated ZK-STARK proof for a commitment with secret "${secret}" and amount ${amount}. 

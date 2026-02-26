@@ -1,10 +1,10 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import Database from "better-sqlite3";
+import BetterSqlite3 from "better-sqlite3";
 import path from "path";
 
 // Initialize Database
-const db = new Database("shadowbtc.db");
+const db = new BetterSqlite3("shadowbtc.db");
 
 // Create tables if they don't exist
 db.exec(`
