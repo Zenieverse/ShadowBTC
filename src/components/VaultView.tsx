@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { MintForm } from './MintForm';
-import { Bitcoin, ArrowDownCircle, ArrowUpCircle, Shield, ExternalLink } from 'lucide-react';
+import { Bitcoin, ArrowDownCircle, ArrowUpCircle, Shield, ExternalLink, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface VaultViewProps {
@@ -8,6 +8,72 @@ interface VaultViewProps {
 }
 
 export const VaultView = ({ onSuccess }: VaultViewProps) => {
+  const [withdrawAddress, setWithdrawAddress] = useState('');
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [commitments, setCommitments] = useState<any[]>([]);
+  const [selectedCommitmentId, setSelectedCommitmentId] = useState('');
+  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    fetchCommitments();
+  }, []);
+
+  const fetchCommitments = async () => {
+    try {
+      const res = await fetch('/api/commitments');
+      const data = await res.json();
+      setCommitments(data.filter((c: any) => !c.spent));
+    } catch (err) {
+      console.error("Failed to fetch commitments", err);
+    }
+  };
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!withdrawAddress || !selectedCommitmentId) return;
+
+    setIsWithdrawing(true);
+    setStatus('idle');
+
+    try {
+      const res = await fetch('/api/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          commitmentId: selectedCommitmentId,
+          address: withdrawAddress
+        }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        setStatus('success');
+        const commitment = commitments.find(c => c.id === selectedCommitmentId);
+        onSuccess(-(commitment?.amount || 0));
+        fetchCommitments();
+        setTimeout(() => {
+          setStatus('idle');
+          setWithdrawAddress('');
+          setSelectedCommitmentId('');
+          setIsWithdrawing(false);
+        }, 3000);
+      } else {
+        throw new Error(result.error || "Withdrawal failed");
+      }
+    } catch (err: any) {
+      setStatus('error');
+      setError(err.message);
+      setIsWithdrawing(false);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert(`Copied to clipboard: ${text}`);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -36,18 +102,79 @@ export const VaultView = ({ onSuccess }: VaultViewProps) => {
             Withdraw BTC
           </h3>
           
-          <div className="flex-1 flex flex-col justify-center items-center text-center p-8 border-2 border-dashed border-white/5 rounded-xl">
-            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <Bitcoin size={24} className="text-white/20" />
+          <form onSubmit={handleWithdraw} className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs text-white/40 uppercase font-bold">Select Commitment to Burn</label>
+              <select 
+                value={selectedCommitmentId}
+                onChange={(e) => setSelectedCommitmentId(e.target.value)}
+                disabled={isWithdrawing || commitments.length === 0}
+                className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm appearance-none"
+              >
+                <option value="">Select a commitment...</option>
+                {commitments.map(c => (
+                  <option key={c.id} value={c.id}>
+                    {c.amount.toFixed(4)} zBTC (ID: {c.id.slice(0, 8)}...)
+                  </option>
+                ))}
+              </select>
             </div>
-            <h4 className="text-sm font-medium mb-2">Withdrawal to L1</h4>
-            <p className="text-xs text-white/40 max-w-[200px] mb-6">
-              Convert your shielded zBTC back to native Bitcoin on the mainnet.
-            </p>
-            <button className="btn-secondary w-full opacity-50 cursor-not-allowed">
-              Coming Soon
+
+            <div className="space-y-2">
+              <label className="text-xs text-white/40 uppercase font-bold">Destination BTC Address</label>
+              <input 
+                type="text" 
+                value={withdrawAddress}
+                onChange={(e) => setWithdrawAddress(e.target.value)}
+                placeholder="bc1q..."
+                disabled={isWithdrawing}
+                className="w-full bg-brand-dark/50 border border-brand-border rounded-xl py-3 px-4 focus:outline-none focus:border-brand-primary transition-colors font-mono text-sm"
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={isWithdrawing || !withdrawAddress || !selectedCommitmentId}
+              className="w-full btn-secondary flex items-center justify-center gap-2 py-4 border border-white/10 hover:border-white/20"
+            >
+              {isWithdrawing ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Processing Withdrawal...
+                </>
+              ) : (
+                <>
+                  Withdraw to L1 <Bitcoin size={18} />
+                </>
+              )}
             </button>
-          </div>
+
+            {commitments.length === 0 && !isWithdrawing && (
+              <p className="text-[10px] text-rose-400 text-center">No available shielded commitments to withdraw.</p>
+            )}
+          </form>
+
+          {status === 'success' && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center gap-3 text-emerald-400 text-sm"
+            >
+              <CheckCircle2 size={18} />
+              <span>Withdrawal request submitted to L1.</span>
+            </motion.div>
+          )}
+
+          {status === 'error' && (
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-3 text-rose-400 text-sm"
+            >
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -61,17 +188,23 @@ export const VaultView = ({ onSuccess }: VaultViewProps) => {
           <div className="space-y-4">
             <div>
               <p className="text-[10px] text-white/40 uppercase font-bold mb-1">zBTC ERC20 Contract</p>
-              <div className="flex items-center justify-between bg-brand-dark/50 p-3 rounded-lg border border-brand-border">
+              <button 
+                onClick={() => copyToClipboard("0x049d...c042")}
+                className="w-full flex items-center justify-between bg-brand-dark/50 p-3 rounded-lg border border-brand-border hover:border-brand-primary/30 transition-colors group"
+              >
                 <code className="text-xs font-mono text-brand-primary">0x049d...c042</code>
-                <ExternalLink size={14} className="text-white/20" />
-              </div>
+                <ExternalLink size={14} className="text-white/20 group-hover:text-brand-primary" />
+              </button>
             </div>
             <div>
               <p className="text-[10px] text-white/40 uppercase font-bold mb-1">Shielded Vault (Cairo 2.x)</p>
-              <div className="flex items-center justify-between bg-brand-dark/50 p-3 rounded-lg border border-brand-border">
+              <button 
+                onClick={() => copyToClipboard("0x07f3...a3b2")}
+                className="w-full flex items-center justify-between bg-brand-dark/50 p-3 rounded-lg border border-brand-border hover:border-brand-primary/30 transition-colors group"
+              >
                 <code className="text-xs font-mono text-brand-primary">0x07f3...a3b2</code>
-                <ExternalLink size={14} className="text-white/20" />
-              </div>
+                <ExternalLink size={14} className="text-white/20 group-hover:text-brand-primary" />
+              </button>
             </div>
           </div>
 

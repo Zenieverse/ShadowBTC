@@ -3,6 +3,26 @@ import { BarChart3, Lock, Shield, EyeOff, Activity } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const AnalyticsView = () => {
+  const handleExport = () => {
+    const stats = {
+      totalVolume: "1.24 BTC",
+      avgPrivacy: "99.2%",
+      proofsGenerated: "42",
+      l1GasSaved: "0.042 BTC",
+      timestamp: new Date().toISOString()
+    };
+    
+    const blob = new Blob([JSON.stringify(stats, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `shadowbtc-report-${Date.now()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -73,7 +93,10 @@ export const AnalyticsView = () => {
           <p className="text-sm text-white/40 max-w-sm leading-relaxed">
             Your analytics are computed locally. ShadowBTC never uploads your transaction history or performance data to any central server.
           </p>
-          <button className="mt-8 btn-secondary text-xs uppercase tracking-widest font-bold">
+          <button 
+            onClick={handleExport}
+            className="mt-8 btn-secondary text-xs uppercase tracking-widest font-bold"
+          >
             Export Local Report
           </button>
         </div>

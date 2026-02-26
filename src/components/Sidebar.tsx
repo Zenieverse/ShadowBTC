@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
-export type ViewType = 'dashboard' | 'transfer' | 'vault' | 'analytics';
+export type ViewType = 'dashboard' | 'transfer' | 'vault' | 'analytics' | 'settings' | 'support';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -27,8 +27,8 @@ const NAV_ITEMS = [
 ];
 
 const BOTTOM_ITEMS = [
-  { icon: Settings, label: 'Settings' },
-  { icon: HelpCircle, label: 'Support' },
+  { id: 'settings' as ViewType, icon: Settings, label: 'Settings' },
+  { id: 'support' as ViewType, icon: HelpCircle, label: 'Support' },
 ];
 
 export const Sidebar = ({ currentView, onViewChange }: SidebarProps) => {
@@ -67,10 +67,16 @@ export const Sidebar = ({ currentView, onViewChange }: SidebarProps) => {
       <div className="p-4 space-y-2 border-t border-brand-border">
         {BOTTOM_ITEMS.map((item) => (
           <button
-            key={item.label}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-all"
+            key={item.id}
+            onClick={() => onViewChange(item.id)}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group",
+              currentView === item.id 
+                ? "bg-brand-primary/10 text-brand-primary border border-brand-primary/20" 
+                : "text-white/40 hover:text-white hover:bg-white/5"
+            )}
           >
-            <item.icon size={20} />
+            <item.icon size={20} className={cn(currentView === item.id ? "text-brand-primary" : "group-hover:text-white")} />
             <span className="font-medium">{item.label}</span>
           </button>
         ))}

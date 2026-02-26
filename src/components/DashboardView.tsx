@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldedBalance } from './ShieldedBalance';
 import { ActivityFeed } from './ActivityFeed';
-import { TrendingUp, PieChart, ShieldCheck } from 'lucide-react';
+import { TrendingUp, PieChart, ShieldCheck, RefreshCw } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface DashboardViewProps {
@@ -9,6 +9,25 @@ interface DashboardViewProps {
 }
 
 export const DashboardView = ({ balance }: DashboardViewProps) => {
+  const [rewards, setRewards] = useState(0.00124);
+  const [isClaiming, setIsClaiming] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  const handleClaim = () => {
+    if (rewards <= 0) return;
+    setIsClaiming(true);
+    setTimeout(() => {
+      setRewards(0);
+      setIsClaiming(false);
+      alert("Shielded rewards claimed and added to your pool.");
+    }, 1500);
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -17,7 +36,15 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
     >
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
-          <ShieldedBalance balance={balance} />
+          <div className="relative group">
+            <ShieldedBalance balance={balance} />
+            <button 
+              onClick={handleRefresh}
+              className="absolute top-4 right-16 p-2 rounded-full hover:bg-white/5 text-white/20 hover:text-white/40 transition-colors"
+            >
+              <RefreshCw size={16} className={isRefreshing ? "animate-spin" : ""} />
+            </button>
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="glass p-6 rounded-2xl">
@@ -49,15 +76,21 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
                 Yield Earned
               </div>
               <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-3xl font-bold font-mono text-emerald-400">0.00124</span>
+                <span className="text-3xl font-bold font-mono text-emerald-400">
+                  {rewards > 0 ? rewards.toFixed(5) : "0.00000"}
+                </span>
                 <span className="text-sm text-white/40 font-mono">zBTC</span>
               </div>
               <div className="text-[10px] text-emerald-500/60 font-bold uppercase tracking-tight">
                 +12.4% APY (Shielded)
               </div>
               <div className="mt-4 pt-4 border-t border-white/5">
-                <button className="text-[10px] text-brand-primary hover:text-brand-primary/80 font-bold uppercase tracking-widest transition-colors">
-                  Claim Rewards
+                <button 
+                  onClick={handleClaim}
+                  disabled={isClaiming || rewards <= 0}
+                  className="text-[10px] text-brand-primary hover:text-brand-primary/80 font-bold uppercase tracking-widest transition-colors disabled:opacity-30"
+                >
+                  {isClaiming ? "Claiming..." : "Claim Rewards"}
                 </button>
               </div>
             </div>
@@ -65,12 +98,16 @@ export const DashboardView = ({ balance }: DashboardViewProps) => {
 
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Network TVL', value: '1,240.5 BTC' },
-              { label: 'Privacy Score', value: '98/100' },
-              { label: 'STARK Proofs', value: '12,402' },
+              { label: 'Network TVL', value: '1,240.5 BTC', info: 'Total value locked across all shielded pools on Starknet.' },
+              { label: 'Privacy Score', value: '98/100', info: 'Calculated based on anonymity set size and transaction mixing frequency.' },
+              { label: 'STARK Proofs', value: '12,402', info: 'Total zero-knowledge proofs verified by the Cairo smart contracts.' },
             ].map((stat) => (
-              <div key={stat.label} className="glass p-4 rounded-xl">
-                <div className="text-[10px] text-white/40 uppercase font-bold mb-1">{stat.label}</div>
+              <div 
+                key={stat.label} 
+                onClick={() => alert(`${stat.label}: ${stat.info}`)}
+                className="glass p-4 rounded-xl cursor-help hover:border-brand-primary/30 transition-colors group"
+              >
+                <div className="text-[10px] text-white/40 uppercase font-bold mb-1 group-hover:text-brand-primary/60 transition-colors">{stat.label}</div>
                 <div className="text-lg font-mono font-bold text-brand-primary">{stat.value}</div>
               </div>
             ))}

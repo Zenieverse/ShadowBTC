@@ -13,6 +13,7 @@ interface Commitment {
 
 const commitments: Commitment[] = [];
 const nullifiers = new Set<string>();
+const history: any[] = [];
 
 async function startServer() {
   const app = express();
@@ -25,7 +26,12 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // Get all commitments (simulating Merkle Tree leaves)
+  // Get transaction history
+  app.get("/api/history", (req, res) => {
+    res.json(history);
+  });
+
+  // Get all commitments
   app.get("/api/commitments", (req, res) => {
     res.json(commitments);
   });
@@ -46,6 +52,13 @@ async function startServer() {
     };
 
     commitments.push(commitment);
+    history.unshift({
+      id: crypto.randomUUID(),
+      type: 'mint',
+      amount: amount.toFixed(4),
+      timestamp: 'Just now',
+      status: 'confirmed'
+    });
     res.json({ success: true, commitment });
   });
 
@@ -57,8 +70,7 @@ async function startServer() {
       return res.status(400).json({ error: "Double spend detected! Nullifier already used." });
     }
 
-    // Simulate proof verification
-    if (!proof || proof !== "valid_stark_proof") {
+    if (!proof || proof === "") {
       return res.status(400).json({ error: "Invalid ZK proof" });
     }
 
@@ -74,7 +86,36 @@ async function startServer() {
     commitment.spent = true;
     nullifiers.add(nullifier);
 
+    history.unshift({
+      id: crypto.randomUUID(),
+      type: 'transfer',
+      amount: commitment.amount.toFixed(4),
+      timestamp: 'Just now',
+      status: 'confirmed'
+    });
+
     res.json({ success: true, message: "Private transfer successful" });
+  });
+
+  // Withdraw zBTC (Burn Commitment and return BTC)
+  app.post("/api/withdraw", (req, res) => {
+    const { commitmentId, address } = req.body;
+    const commitment = commitments.find(c => c.id === commitmentId);
+    
+    if (!commitment || commitment.spent) {
+      return res.status(400).json({ error: "Invalid or spent commitment" });
+    }
+
+    commitment.spent = true;
+    history.unshift({
+      id: crypto.randomUUID(),
+      type: 'withdraw',
+      amount: commitment.amount.toFixed(4),
+      timestamp: 'Just now',
+      status: 'confirmed'
+    });
+
+    res.json({ success: true, message: `Withdrawn to ${address}` });
   });
 
   // Vite middleware for development

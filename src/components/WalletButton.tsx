@@ -1,25 +1,53 @@
 import React, { useState, useEffect } from 'react';
 import { connect, disconnect } from 'get-starknet';
-import { Wallet, LogOut, ChevronRight } from 'lucide-react';
+import { Wallet, LogOut, Loader2 } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
 
 export const WalletButton = () => {
   const [address, setAddress] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        // Try to connect silently if already authorized
+        const starknet = await connect({ modalMode: 'neverAsk' }) as any;
+        if (starknet && starknet.isConnected) {
+          setAddress(starknet.selectedAddress || null);
+        }
+      } catch (error) {
+        // Silent fail is fine here
+      }
+    };
+    checkConnection();
+  }, []);
 
   const handleConnect = async () => {
+    setIsConnecting(true);
     try {
-      const starknet = await connect() as any;
+      const starknet = await connect({
+        modalMode: 'alwaysAsk',
+        modalTheme: 'dark'
+      }) as any;
+      
       if (starknet && starknet.isConnected) {
         setAddress(starknet.selectedAddress || null);
       }
     } catch (error) {
       console.error("Connection failed", error);
+      alert("Failed to connect Starknet wallet. Please ensure Argent X or Braavos is installed.");
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const handleDisconnect = async () => {
-    await disconnect();
-    setAddress(null);
+    try {
+      await disconnect();
+      setAddress(null);
+    } catch (error) {
+      console.error("Disconnect failed", error);
+    }
   };
 
   return (
@@ -35,6 +63,7 @@ export const WalletButton = () => {
           <button 
             onClick={handleDisconnect}
             className="p-2 rounded-full hover:bg-white/5 text-rose-400 transition-colors"
+            title="Disconnect Wallet"
           >
             <LogOut size={18} />
           </button>
@@ -42,10 +71,15 @@ export const WalletButton = () => {
       ) : (
         <button 
           onClick={handleConnect}
-          className="btn-primary flex items-center gap-2 text-sm"
+          disabled={isConnecting}
+          className="btn-primary flex items-center gap-2 text-sm disabled:opacity-50"
         >
-          <Wallet size={18} />
-          Connect Starknet
+          {isConnecting ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : (
+            <Wallet size={18} />
+          )}
+          {isConnecting ? 'Connecting...' : 'Connect Starknet'}
         </button>
       )}
     </div>
